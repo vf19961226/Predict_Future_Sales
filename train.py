@@ -41,9 +41,6 @@ X_train = np.expand_dims(dataset.values[:, :-1], axis=2)
 #第34個月（date_block_num)
 y_train = dataset.values[:, -1:]
 
-X_test = np.expand_dims(dataset.values[:, 1:], axis=2)
-print(X_train.shape, y_train.shape, X_test.shape)
-
 #x_train切完會是214200筆 時間序為33的資料
 
 from keras.models import Sequential
