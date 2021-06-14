@@ -1,89 +1,68 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 14 13:36:50 2021
+Created on Mon Jun 14 21:39:33 2021
 
-@author: vf19961226
+@author: vf199
 """
 
-
-import pandas as pd
-import warnings
-warnings.filterwarnings('ignore') 
+import numpy as np 
+import pandas as pd 
 import argparse
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--training",default="./data/sales_train.csv",help="Input your testing data.")
-parser.add_argument("--output",default="model.pkl",help="Output your result.")
+parser.add_argument("--testing",default="./data/test.csv",help="Input your testing data.")
+parser.add_argument("--output",default="model.h5",help="Output your result.")
 args=parser.parse_args()
 
-#匯入檔案
-sales_data = pd.read_csv(args.training)
+# Import all of them 
+sales=pd.read_csv(args.training)
 
-#date 的 datatype從object to datatime64
-sales_data['date']=pd.to_datetime(sales_data['date'])
-#sales_data.head(4)
+# settings
+import warnings
+warnings.filterwarnings("ignore")
 
-#時間年,月,日改成年,月
-sales_data['date']=sales_data['date'].dt.strftime('%Y-%m')
-#按照日期大小排列
-sales_data.head().sort_values(by='date')
+test=pd.read_csv(args.testing)
 
-#丟掉'date_block_num','item_price' 
-sales_data.drop(['date_block_num','item_price'] , axis =1, inplace= True)
-sales_data.head().sort_values(by='date')
+sales['date'] = pd.to_datetime(sales['date'], format='%d.%m.%Y')
+sales.tail(10)
 
-sales_data=sales_data.groupby(['date','shop_id','item_id']).sum()
-#sales_data.head()
+dataset = sales.pivot_table(index=['item_id', 'shop_id'],values=['item_cnt_day'], columns='date_block_num', fill_value=0,aggfunc=np.sum)
+dataset = dataset.reset_index()
 
-#以['shop_id','item_id']為索引 column[date]為時間軸紀錄item_cnt_day
-sales_data = sales_data.pivot_table(index=['shop_id','item_id'], columns='date', values='item_cnt_day', fill_value=0)
-sales_data.head(10)
+dataset = pd.merge(test, dataset, on=['item_id', 'shop_id'], how='left')
+dataset = dataset.fillna(0)
 
-#插入索引
-sales_data.reset_index(inplace=True)
-#sales_data.head()
+dataset = dataset.drop(['shop_id', 'item_id', 'ID'], axis=1)
 
-#試畫df_for_test row0 的散點圖
-'''
-select_row_0 = df_for_test.loc[0] #資料型別pandas.core.series.Series
-select_row_0 =select_row_0.to_frame().T #轉換資料型別to dataframe
-select_row_0.drop(['shop_id','item_id'], axis =1, inplace=True)
-month = select_row_0.columns
-row_0_data = select_row_0.values 
-plt.figure(figsize=(10, 3), dpi=100)
-plt.scatter(month, row_0_data)
-plt.show()  
-'''
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-import joblib
+#原始x_train出來會是二維 （214200, 33）,用np.expand_dims在第二維度後再多加一維,應該是因為lstm要三維data
+X_train = np.expand_dims(dataset.values[:, :-1], axis=2)
 
-Y_train = sales_data['2015-10'].values
-X_train = sales_data.drop(['2015-10'], axis = 1)
+#第34個月（date_block_num)
+y_train = dataset.values[:, -1:]
 
-x_train, x_val, y_train, y_val = train_test_split( X_train, Y_train, test_size=0.2, random_state=101)
+X_test = np.expand_dims(dataset.values[:, 1:], axis=2)
+print(X_train.shape, y_train.shape, X_test.shape)
 
-model_randomforest = RandomForestRegressor(  n_estimators=100,
-                                             criterion='mse',
-                                             max_depth=None,
-                                             min_samples_split=2,
-                                             min_samples_leaf=1,
-                                             min_weight_fraction_leaf=0.0,
-                                             max_features='auto',
-                                             max_leaf_nodes=None,
-                                             min_impurity_split=1e-07,
-                                             bootstrap=True,
-                                             oob_score=False,
-                                             n_jobs=1,
-                                             random_state=None,
-                                             verbose=0,
-                                             warm_start=False)
-model_randomforest.fit(x_train,y_train)
+#x_train切完會是214200筆 時間序為33的資料
 
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
 
-print('Train loss:', mean_squared_error(y_train, model_randomforest.predict(x_train)))
-print('Test loss:', mean_squared_error(y_val, model_randomforest.predict(x_val)))
-print('Test R-squared :', model_randomforest.score(x_train,y_train))
-#儲存model (我不知道為什麼不能用model.save) 這是找到的替代方案
-joblib.dump(model_randomforest, args.output) 
+model_kaggle_lstm = Sequential()
+model_kaggle_lstm .add(LSTM(units=64, input_shape=(33,1)))
+model_kaggle_lstm .add(Dropout(0.3))
+model_kaggle_lstm .add(Dense(1))
+
+model_kaggle_lstm .compile(loss='mse',
+              optimizer='adam',
+              metrics=['mean_squared_error'])
+
+model_kaggle_lstm .summary()
+
+from keras.callbacks import EarlyStopping
+
+callbacks_list=[EarlyStopping(monitor="val_loss",min_delta=.001, patience=3,mode='auto')]
+
+history = model_kaggle_lstm .fit(X_train, y_train, batch_size=4096, epochs=30,callbacks=callbacks_list)
+model_kaggle_lstm .save(args.output)
