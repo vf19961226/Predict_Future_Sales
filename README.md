@@ -105,4 +105,4 @@
 |4|1
 
 #### 其他
-本專案實作過程中更詳細的紀錄報告：[**report link**](https://docs.google.com/presentation/d/1sXl0K8NPNc3zbt92C4WY9i8vZh9Qkb9OhqChX9-LsSI/edit?usp=sharing)
+本專案實作過程中更詳細的紀錄報告：[**report link**](https://drive.google.com/file/d/19wlMrm2g45XHDYG_-uvlOyclCMO3wWMY/view?usp=sharing)
