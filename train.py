@@ -10,7 +10,7 @@ import pandas as pd
 import argparse
 
 parser=argparse.ArgumentParser()
-parser.add_argument("--training",default="./data/sales_train.csv",help="Input your testing data.")
+parser.add_argument("--training",default="./data/sales_train.csv",help="Input your training data.")
 parser.add_argument("--testing",default="./data/test.csv",help="Input your testing data.")
 parser.add_argument("--output",default="model.h5",help="Output your result.")
 args=parser.parse_args()
