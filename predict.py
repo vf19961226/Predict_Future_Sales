@@ -11,11 +11,13 @@ import joblib
 import argparse
 
 parser=argparse.ArgumentParser()
+parser.add_argument("--model",default="model.pkl",help="Input your model.")
+parser.add_argument("--training",default="./data/sales_train.csv",help="Input your training data.")
 parser.add_argument("--testing",default="./data/test.csv",help="Input your testing data.")
 parser.add_argument("--output",default="submission.csv",help="Output your result.")
 args=parser.parse_args()
 
-sales_data = pd.read_csv("./data/sales_train.csv")
+sales_data = pd.read_csv(args.training)
 #date 的 datatype從object to datatime64
 sales_data['date']=pd.to_datetime(sales_data['date'])
 #sales_data.head(4)
@@ -45,7 +47,7 @@ df_for_test.drop(['ID', '2013-01'], axis =1, inplace=True)
 df_for_test= df_for_test .fillna(0)
 X_test = df_for_test
 
-model_for_predict = joblib.load("model.pkl")
+model_for_predict = joblib.load(args.model)
 prediction = model_for_predict.predict(X_test)
 print(prediction.shape)
 print(prediction[:10])
